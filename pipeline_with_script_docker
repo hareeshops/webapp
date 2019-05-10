@@ -1,0 +1,28 @@
+node
+{
+    stage("SCM checkout")
+    {
+        git branch: 'pipeline_with_script_docker', credentialsId: 'git_credentials', url: 'https://github.com/hareeshops/webapp.git'
+    }
+    stage("MVN Packaging ")
+    {
+        def mavenHome = tool name: 'MAVEN_HOME', type: 'maven'
+        def mvnCMD = "${mavenHome}/bin/mvn"
+        sh "${mvnCMD} clean install"
+    }
+    stage("Building Dockeer Image ")
+    {
+        sh 'docker build -t hareeshops/my-webapp:1.0.0 .'
+    }
+    stage("Pushing docker image ")
+    {
+        withCredentials([string(credentialsId: 'dockerhub_credentials', variable: 'docker_hubpwd')]) {
+        sh "docker login -u hareeshops -p ${docker_hubpwd}"
+       }
+        sh 'docker push hareeshops/my-webapp:1.0.0'
+    }
+    stage("Deploy and Run Docker container to stage/dev ")
+    {
+        sh 'docker run -d -p 8081:8080 hareeshops/my-webapp:1.0.0'
+    }
+}
